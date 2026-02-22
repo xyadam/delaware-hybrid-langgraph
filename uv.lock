@@ -448,7 +448,7 @@ wheels = [
 ]
 
 [[package]]
-name = "delaware-2step"
+name = "delaware-hybrid-langgraph"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
