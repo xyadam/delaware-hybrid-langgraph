@@ -1,5 +1,5 @@
 [project]
-name = "delaware-2step"
+name = "delaware-hybrid-langgraph"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
