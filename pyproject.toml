@@ -1,0 +1,33 @@
+[project]
+name = "delaware-2step"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.5.0",
+    "fpdf2>=2.8.6",
+    "google-genai>=1.64.0",
+    "langchain>=1.2.10",
+    "langchain-community>=0.4.1",
+    "langchain-google-genai>=4.2.1",
+    "langchain-openai>=1.1.10",
+    "langgraph>=1.0.9",
+    "langgraph-checkpoint-sqlite>=3.0.3",
+    "langgraph-cli[inmem]>=0.4.12",
+    "pandas>=3.0.1",
+    "pydantic>=2.12.5",
+    "pypdf>=6.7.1",
+    "pytest>=9.0.2",
+    "pytest-dotenv>=0.5.2",
+    "pytest-rerunfailures>=16.1",
+    "python-dotenv>=1.2.1",
+    "rich>=14.3.3",
+    "sqlite-vec>=0.1.6",
+    "sqlmodel>=0.0.35",
+    "textual>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+env_files = [".env"]

@@ -1,0 +1,256 @@
+[
+  {
+    "question": "What are the top selling products?",
+    "reasoning": "Don't just return the #1 product. Return the top 5-10 to give richer context about what sells well, including category and revenue.",
+    "steps": [
+      {
+        "purpose": "Get top 10 products by total revenue with category context",
+        "sql": "SELECT p.product_id, p.description_en, p.category, p.sub_category, SUM(t.line_total) AS total_revenue, SUM(t.quantity) AS total_units FROM transactions t JOIN products p ON t.product_id = p.product_id WHERE t.transaction_type = 'Sale' GROUP BY p.product_id ORDER BY total_revenue DESC LIMIT 10"
+      }
+    ]
+  },
+  {
+    "question": "How do our stores in Germany perform?",
+    "reasoning": "First understand which stores exist in Germany, then pull sales metrics per store to compare them against each other.",
+    "steps": [
+      {
+        "purpose": "Find all German stores",
+        "sql": "SELECT store_id, store_name, city, number_of_employees FROM stores WHERE country = 'Germany'"
+      },
+      {
+        "purpose": "Get revenue and transaction count per German store",
+        "sql": "SELECT s.store_name, s.city, COUNT(DISTINCT t.invoice_id) AS total_invoices, SUM(t.quantity) AS total_units, SUM(t.line_total) AS total_revenue FROM transactions t JOIN stores s ON t.store_id = s.store_id WHERE s.country = 'Germany' AND t.transaction_type = 'Sale' GROUP BY s.store_id ORDER BY total_revenue DESC"
+      }
+    ]
+  },
+  {
+    "question": "Which product categories sell best in France?",
+    "reasoning": "Break down by category and sub_category to give a layered view of what French customers prefer.",
+    "steps": [
+      {
+        "purpose": "Revenue by category in French stores",
+        "sql": "SELECT p.category, SUM(t.line_total) AS total_revenue, SUM(t.quantity) AS total_units, COUNT(DISTINCT t.invoice_id) AS invoices FROM transactions t JOIN products p ON t.product_id = p.product_id JOIN stores s ON t.store_id = s.store_id WHERE s.country = 'France' AND t.transaction_type = 'Sale' GROUP BY p.category ORDER BY total_revenue DESC"
+      },
+      {
+        "purpose": "Top 5 sub-categories in France for more detail",
+        "sql": "SELECT p.category, p.sub_category, SUM(t.line_total) AS total_revenue, SUM(t.quantity) AS total_units FROM transactions t JOIN products p ON t.product_id = p.product_id JOIN stores s ON t.store_id = s.store_id WHERE s.country = 'France' AND t.transaction_type = 'Sale' GROUP BY p.category, p.sub_category ORDER BY total_revenue DESC LIMIT 5"
+      }
+    ]
+  },
+  {
+    "question": "Show me revenue comparison across all countries",
+    "reasoning": "Compare all 7 countries side by side with revenue, units, average order value, and return rate.",
+    "steps": [
+      {
+        "purpose": "Revenue and volume per country",
+        "sql": "SELECT s.country, SUM(CASE WHEN t.transaction_type = 'Sale' THEN t.line_total ELSE 0 END) AS sales_revenue, SUM(CASE WHEN t.transaction_type = 'Sale' THEN t.quantity ELSE 0 END) AS units_sold, SUM(CASE WHEN t.transaction_type = 'Return' THEN t.quantity ELSE 0 END) AS units_returned, COUNT(DISTINCT t.invoice_id) AS total_invoices FROM transactions t JOIN stores s ON t.store_id = s.store_id GROUP BY s.country ORDER BY sales_revenue DESC"
+      }
+    ]
+  },
+  {
+    "question": "Who are our top customers by spending?",
+    "reasoning": "Return top 10 customers, not just top 1. Include their country and number of purchases for context.",
+    "steps": [
+      {
+        "purpose": "Top 10 customers by total spend",
+        "sql": "SELECT c.customer_id, c.name, c.country, c.gender, SUM(t.line_total) AS total_spent, COUNT(DISTINCT t.invoice_id) AS num_orders, SUM(t.quantity) AS total_items FROM transactions t JOIN customers c ON t.customer_id = c.customer_id WHERE t.transaction_type = 'Sale' GROUP BY c.customer_id ORDER BY total_spent DESC LIMIT 10"
+      }
+    ]
+  },
+  {
+    "question": "What is the monthly sales trend for 2024?",
+    "reasoning": "Show all 12 months to reveal seasonality patterns. Include both revenue and units.",
+    "steps": [
+      {
+        "purpose": "Monthly revenue and units for full year",
+        "sql": "SELECT SUBSTR(t.date, 1, 7) AS month, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units_sold, COUNT(DISTINCT t.invoice_id) AS invoices FROM transactions t WHERE t.transaction_type = 'Sale' GROUP BY month ORDER BY month"
+      }
+    ]
+  },
+  {
+    "question": "What is our return rate?",
+    "reasoning": "Calculate return rate overall, and then break down by country and category to find problem areas.",
+    "steps": [
+      {
+        "purpose": "Overall return rate",
+        "sql": "SELECT transaction_type, COUNT(*) AS line_count, SUM(quantity) AS total_units, SUM(line_total) AS total_value FROM transactions GROUP BY transaction_type"
+      },
+      {
+        "purpose": "Return rate by country to spot regional issues",
+        "sql": "SELECT s.country, SUM(CASE WHEN t.transaction_type = 'Return' THEN t.quantity ELSE 0 END) AS returned_units, SUM(CASE WHEN t.transaction_type = 'Sale' THEN t.quantity ELSE 0 END) AS sold_units, ROUND(100.0 * SUM(CASE WHEN t.transaction_type = 'Return' THEN t.quantity ELSE 0 END) / SUM(CASE WHEN t.transaction_type = 'Sale' THEN t.quantity ELSE 0 END), 2) AS return_rate_pct FROM transactions t JOIN stores s ON t.store_id = s.store_id GROUP BY s.country ORDER BY return_rate_pct DESC"
+      }
+    ]
+  },
+  {
+    "question": "What discounts were active and how effective were they?",
+    "reasoning": "First explore what discounts exist, then measure their impact on sales volume during the discount period.",
+    "steps": [
+      {
+        "purpose": "List all discount campaigns",
+        "sql": "SELECT id, description, category, sub_category, discount, start, end FROM discounts ORDER BY start"
+      },
+      {
+        "purpose": "Compare sales volume during vs outside discount periods for a category",
+        "sql": "SELECT CASE WHEN t.discount > 0 THEN 'Discounted' ELSE 'Full Price' END AS price_type, COUNT(*) AS transactions, SUM(t.quantity) AS units, SUM(t.line_total) AS revenue, ROUND(AVG(t.line_total), 2) AS avg_line_total FROM transactions t WHERE t.transaction_type = 'Sale' GROUP BY price_type"
+      }
+    ]
+  },
+  {
+    "question": "Which employees generate the most revenue?",
+    "reasoning": "Show top 10 employees with their store location for context. This helps identify star performers.",
+    "steps": [
+      {
+        "purpose": "Top 10 employees by revenue with store context",
+        "sql": "SELECT e.employee_id, e.name, e.position, s.store_name, s.country, SUM(t.line_total) AS total_revenue, COUNT(DISTINCT t.invoice_id) AS total_invoices FROM transactions t JOIN employees e ON t.employee_id = e.employee_id JOIN stores s ON e.store_id = s.store_id WHERE t.transaction_type = 'Sale' GROUP BY e.employee_id ORDER BY total_revenue DESC LIMIT 10"
+      }
+    ]
+  },
+  {
+    "question": "How are our stores in the US performing?",
+    "reasoning": "The user said 'US' but the database stores 'United States'. Before filtering by country, ALWAYS first query the distinct values to find the exact name match. This prevents silent empty results from name mismatches like 'USA' vs 'United States', 'UK' vs 'United Kingdom', etc.",
+    "steps": [
+      {
+        "purpose": "Discover exact country names in the database",
+        "sql": "SELECT DISTINCT country FROM stores ORDER BY country"
+      },
+      {
+        "purpose": "Use the discovered exact name 'United States' for the actual query",
+        "sql": "SELECT s.store_name, s.city, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units, COUNT(DISTINCT t.invoice_id) AS invoices FROM transactions t JOIN stores s ON t.store_id = s.store_id WHERE s.country = 'United States' AND t.transaction_type = 'Sale' GROUP BY s.store_id ORDER BY revenue DESC"
+      }
+    ]
+  },
+  {
+    "question": "What are the most expensive products and do they sell well?",
+    "reasoning": "Find the highest-priced products, then check if they actually sell. High price doesn't mean high volume.",
+    "steps": [
+      {
+        "purpose": "Top 10 most expensive products by unit price",
+        "sql": "SELECT DISTINCT p.product_id, p.description_en, p.category, p.sub_category, t.unit_price, p.production_cost FROM transactions t JOIN products p ON t.product_id = p.product_id ORDER BY t.unit_price DESC LIMIT 10"
+      },
+      {
+        "purpose": "Sales performance of those expensive products",
+        "sql": "SELECT p.product_id, p.description_en, t.unit_price, SUM(t.quantity) AS total_units, SUM(t.line_total) AS total_revenue, COUNT(DISTINCT t.invoice_id) AS invoices FROM transactions t JOIN products p ON t.product_id = p.product_id WHERE t.transaction_type = 'Sale' GROUP BY p.product_id ORDER BY t.unit_price DESC LIMIT 10"
+      }
+    ]
+  },
+  {
+    "question": "How does the Children's category perform compared to Feminine and Masculine?",
+    "reasoning": "Compare the three main categories across multiple metrics for a comprehensive view.",
+    "steps": [
+      {
+        "purpose": "Category comparison with revenue, units, product count, avg price",
+        "sql": "SELECT p.category, COUNT(DISTINCT p.product_id) AS num_products, SUM(t.quantity) AS total_units, SUM(t.line_total) AS total_revenue, ROUND(AVG(t.unit_price), 2) AS avg_unit_price, COUNT(DISTINCT t.customer_id) AS unique_customers FROM transactions t JOIN products p ON t.product_id = p.product_id WHERE t.transaction_type = 'Sale' GROUP BY p.category ORDER BY total_revenue DESC"
+      }
+    ]
+  },
+  {
+    "question": "Which cities have the highest sales?",
+    "reasoning": "Compare cities across countries. Include the country for context since city names alone may not be recognizable.",
+    "steps": [
+      {
+        "purpose": "Top 10 cities by revenue",
+        "sql": "SELECT s.city, s.country, s.store_name, SUM(t.line_total) AS total_revenue, SUM(t.quantity) AS total_units, COUNT(DISTINCT t.customer_id) AS unique_customers FROM transactions t JOIN stores s ON t.store_id = s.store_id WHERE t.transaction_type = 'Sale' GROUP BY s.store_id ORDER BY total_revenue DESC LIMIT 10"
+      }
+    ]
+  },
+  {
+    "question": "What is the revenue of our Frankfurt store?",
+    "reasoning": "The user said 'Frankfurt' but the database has 'Frankfurt am Main'. When a user mentions a city or store by partial name, use LIKE to discover the exact match first, then use the exact value in the analytical query. This prevents zero-result queries from partial name mismatches.",
+    "steps": [
+      {
+        "purpose": "Find exact city/store name using LIKE for fuzzy matching",
+        "sql": "SELECT store_id, store_name, city, country FROM stores WHERE city LIKE '%Frankfurt%'"
+      },
+      {
+        "purpose": "Use the discovered exact name for the revenue query",
+        "sql": "SELECT s.store_name, s.city, s.country, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units, COUNT(DISTINCT t.invoice_id) AS invoices FROM transactions t JOIN stores s ON t.store_id = s.store_id WHERE s.city = 'Frankfurt am Main' AND t.transaction_type = 'Sale' GROUP BY s.store_id"
+      }
+    ]
+  },
+  {
+    "question": "Which of our sustainable products sell the best?",
+    "reasoning": "Sustainability info is NOT in the SQL database — it lives in the product technical sheet PDFs. First use query_rag to find which products are described as sustainable, then use query_sql to check their sales performance. This is a hybrid question requiring both tools.",
+    "steps": [
+      {
+        "purpose": "Use RAG to find products with sustainability credentials",
+        "tool": "query_rag",
+        "query": "Which products have strong sustainability credentials, eco-certifications, or environmentally friendly manufacturing?"
+      },
+      {
+        "purpose": "Use SQL to get sales performance for the products identified by RAG",
+        "sql": "SELECT p.product_id, p.description_en, p.category, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units FROM transactions t JOIN products p ON t.product_id = p.product_id WHERE t.transaction_type = 'Sale' AND p.product_id IN ({ids_from_rag}) GROUP BY p.product_id ORDER BY revenue DESC LIMIT 10"
+      }
+    ]
+  },
+  {
+    "question": "What silk products do we have and how well do they sell in the UK?",
+    "reasoning": "Material composition (silk, cotton, polyester, etc.) is NOT in the SQL database — it lives in the product technical sheet PDFs. First use query_rag to identify silk products, then query_sql for their UK sales. This is a hybrid question requiring both tools.",
+    "steps": [
+      {
+        "purpose": "Use RAG to find products made from silk",
+        "tool": "query_rag",
+        "query": "Which products are made from silk or contain silk in their fabric composition?"
+      },
+      {
+        "purpose": "Use SQL to get UK sales performance for the silk products found by RAG",
+        "sql": "SELECT p.product_id, p.description_en, p.category, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units FROM transactions t JOIN products p ON t.product_id = p.product_id JOIN stores s ON t.store_id = s.store_id WHERE s.country = 'United Kingdom' AND t.transaction_type = 'Sale' AND p.product_id IN ({ids_from_rag}) GROUP BY p.product_id ORDER BY revenue DESC"
+      }
+    ]
+  },
+  {
+    "question": "What is the profit margin on our products?",
+    "reasoning": "Compare unit_price from transactions against production_cost from products to estimate margins. Show top and bottom margin products.",
+    "steps": [
+      {
+        "purpose": "Top 10 highest margin products",
+        "sql": "SELECT p.product_id, p.description_en, p.category, p.production_cost, ROUND(AVG(t.unit_price), 2) AS avg_selling_price, ROUND(AVG(t.unit_price) - p.production_cost, 2) AS margin, ROUND(100.0 * (AVG(t.unit_price) - p.production_cost) / AVG(t.unit_price), 1) AS margin_pct FROM transactions t JOIN products p ON t.product_id = p.product_id WHERE t.transaction_type = 'Sale' GROUP BY p.product_id ORDER BY margin_pct DESC LIMIT 10"
+      },
+      {
+        "purpose": "Lowest margin products (potential concern)",
+        "sql": "SELECT p.product_id, p.description_en, p.category, p.production_cost, ROUND(AVG(t.unit_price), 2) AS avg_selling_price, ROUND(AVG(t.unit_price) - p.production_cost, 2) AS margin, ROUND(100.0 * (AVG(t.unit_price) - p.production_cost) / AVG(t.unit_price), 1) AS margin_pct FROM transactions t JOIN products p ON t.product_id = p.product_id WHERE t.transaction_type = 'Sale' GROUP BY p.product_id ORDER BY margin_pct ASC LIMIT 10"
+      }
+    ]
+  },
+  {
+    "question": "How does the UK market compare to Germany?",
+    "reasoning": "Multi-step comparison: first overall metrics, then category breakdown for each country.",
+    "steps": [
+      {
+        "purpose": "Overall comparison UK vs Germany",
+        "sql": "SELECT s.country, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units, COUNT(DISTINCT t.invoice_id) AS invoices, COUNT(DISTINCT t.customer_id) AS unique_customers, ROUND(SUM(t.line_total) / COUNT(DISTINCT t.invoice_id), 2) AS avg_order_value FROM transactions t JOIN stores s ON t.store_id = s.store_id WHERE s.country IN ('United Kingdom', 'Germany') AND t.transaction_type = 'Sale' GROUP BY s.country"
+      },
+      {
+        "purpose": "Category breakdown for UK vs Germany",
+        "sql": "SELECT s.country, p.category, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units FROM transactions t JOIN stores s ON t.store_id = s.store_id JOIN products p ON t.product_id = p.product_id WHERE s.country IN ('United Kingdom', 'Germany') AND t.transaction_type = 'Sale' GROUP BY s.country, p.category ORDER BY s.country, revenue DESC"
+      }
+    ]
+  },
+  {
+    "question": "What is the customer gender distribution and spending pattern?",
+    "reasoning": "Analyze gender demographics and how spending differs. F=Female, M=Male, D=Diverse.",
+    "steps": [
+      {
+        "purpose": "Gender distribution with spending metrics",
+        "sql": "SELECT c.gender, COUNT(DISTINCT c.customer_id) AS customers, SUM(t.line_total) AS total_spent, ROUND(SUM(t.line_total) / COUNT(DISTINCT c.customer_id), 2) AS avg_spent_per_customer, SUM(t.quantity) AS total_units FROM transactions t JOIN customers c ON t.customer_id = c.customer_id WHERE t.transaction_type = 'Sale' GROUP BY c.gender ORDER BY total_spent DESC"
+      },
+      {
+        "purpose": "Gender preference by product category",
+        "sql": "SELECT c.gender, p.category, SUM(t.line_total) AS revenue FROM transactions t JOIN customers c ON t.customer_id = c.customer_id JOIN products p ON t.product_id = p.product_id WHERE t.transaction_type = 'Sale' GROUP BY c.gender, p.category ORDER BY c.gender, revenue DESC"
+      }
+    ]
+  },
+  {
+    "question": "What types of children's clothing do we sell?",
+    "reasoning": "Instead of guessing sub-category names, first discover what exists in the database. This exploration-first approach is useful as a standalone answer AND as a prerequisite before deeper analysis on any dimension (category, sub_category, city, store, etc.).",
+    "steps": [
+      {
+        "purpose": "Discover all sub-categories under Children",
+        "sql": "SELECT sub_category, COUNT(*) AS num_products FROM products WHERE category = 'Children' GROUP BY sub_category ORDER BY num_products DESC"
+      },
+      {
+        "purpose": "Sales performance per sub-category",
+        "sql": "SELECT p.sub_category, SUM(t.line_total) AS revenue, SUM(t.quantity) AS units, COUNT(DISTINCT p.product_id) AS products_sold FROM transactions t JOIN products p ON t.product_id = p.product_id WHERE p.category = 'Children' AND t.transaction_type = 'Sale' GROUP BY p.sub_category ORDER BY revenue DESC"
+      }
+    ]
+  }
+]

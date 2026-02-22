@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+
+# Generated data
+db - backup/
+
+# Kaggle CSV files (large, not committed) but keep generator scripts
+kaggle/*.csv
+kaggle/__pycache__/
+kaggle/generators/__pycache__/
+
+kaggle/
+.langgraph_api/
+.pytest_cache/
+temp/

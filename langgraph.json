@@ -1,0 +1,8 @@
+{
+  "graphs": {
+    "online_store_agent": "./src/agent/graph.py:agent"
+  },
+  "dependencies": ["."],
+  "env": ".env",
+  "python_path": "src"
+}
