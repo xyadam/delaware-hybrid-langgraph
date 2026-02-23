@@ -63,7 +63,7 @@ Data collected across all iterations:
 {collected_data}
 
 Rules for the final answer:
-- Use markdown tables for multi-row data
+- EXTREMELY IMPORTANT: When presenting multi-row data (rankings, comparisons, lists of items with attributes), you MUST wrap it as a JSON array inside <tabledata> tags. Example: <tabledata>[{{"Name": "Product A", "Sales": 100}}, {{"Name": "Product B", "Sales": 80}}]</tabledata>. NEVER use markdown tables, numbered lists, or bullet points for tabular data. The UI ONLY renders <tabledata> blocks as tables
 - Reference specific numbers and facts from the collected data
 - If data came from both SQL and RAG sources, clearly integrate both
 - Present comparisons and insights, not just raw numbers
@@ -207,7 +207,9 @@ CREATE TABLE transactions (
 8. Use `line_total` for revenue calculations (it already includes discounts).
 9. Filter by `transaction_type = 'Sale'` for sales analysis. Include returns only when specifically asked about returns or return rates.
 10. Dates are stored as 'YYYY-MM-DD HH:MM:SS'. Use SUBSTR(date, 1, 10) for date-only comparisons, SUBSTR(date, 1, 7) for monthly grouping.
-11. Present results clearly. Use markdown tables for multi-row results.
+11. EXTREMELY IMPORTANT: When presenting multi-row results (rankings, comparisons, lists with attributes), you MUST use <tabledata> tags with a JSON array inside. Example:
+<tabledata>[{{"Country": "Germany", "Revenue": 125000}}, {{"Country": "France", "Revenue": 98000}}]</tabledata>
+NEVER use markdown tables (pipes/dashes), numbered lists, or bullet points for tabular data. The UI ONLY renders <tabledata> blocks as formatted tables. Always use <tabledata> when there are 2+ items with shared attributes.
 12. If a query fails, explain the error and try a corrected query.
 13. For general conversation not related to data, respond directly without using tools.
 14. When comparing countries, remember that currencies differ. Note this in your analysis when relevant.

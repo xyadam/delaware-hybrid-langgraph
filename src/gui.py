@@ -3,6 +3,7 @@
 ###########################################################################
 
 import json
+import re
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -13,8 +14,10 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from dotenv import load_dotenv
 from rich.columns import Columns
 from rich.markdown import Markdown
+from rich.console import Group
 from rich.panel import Panel
 from rich.syntax import Syntax
+from rich.table import Table
 from textual import on
 from textual import work
 from textual.app import App, ComposeResult
@@ -264,7 +267,30 @@ class RetailAgentGui(App):
         )
 
     def _write_assistant_box(self, text: str) -> None:
-        self._chat_log().write(Panel(Markdown(text), border_style="magenta", title="Assistant"))
+        parts = re.split(r"<tabledata>(.*?)</tabledata>", text, flags=re.DOTALL)
+        renderables = []
+        for i, part in enumerate(parts):
+            if i % 2 == 1:
+                try:
+                    data = json.loads(part)
+                    if isinstance(data, list) and data and isinstance(data[0], dict):
+                        table = Table(show_header=True, header_style="bold magenta", expand=True)
+                        for col in data[0].keys():
+                            table.add_column(col)
+                        for row in data:
+                            table.add_row(*[str(row.get(col, "")) for col in data[0].keys()])
+                        renderables.append(table)
+                        continue
+                except (json.JSONDecodeError, IndexError, TypeError):
+                    pass
+                renderables.append(Markdown(part.strip()))
+            else:
+                stripped = part.strip()
+                if stripped:
+                    renderables.append(Markdown(stripped))
+        if not renderables:
+            return
+        self._chat_log().write(Panel(Group(*renderables), border_style="magenta", title="Assistant"))
 
     def _write_welcome_box(self, text: str) -> None:
         self._chat_log().write(

@@ -2,11 +2,13 @@
 ##                            IMPORTS
 ###########################################################################
 
+import json
+import re
 import uuid
 import sqlite3
 
 from dotenv import load_dotenv
-from rich.console import Console
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.markdown import Markdown
@@ -39,6 +41,32 @@ DEPTH_LABELS = {
 ###########################################################################
 ##                       RENDERING FUNCTIONS
 ###########################################################################
+
+
+def render_ai_content(text: str) -> Group:
+    """Parse AI response, converting <tabledata> JSON blocks into Rich tables."""
+    parts = re.split(r"<tabledata>(.*?)</tabledata>", text, flags=re.DOTALL)
+    renderables = []
+    for i, part in enumerate(parts):
+        if i % 2 == 1:
+            try:
+                data = json.loads(part)
+                if isinstance(data, list) and data and isinstance(data[0], dict):
+                    table = Table(show_header=True, header_style="bold cyan", expand=True)
+                    for col in data[0].keys():
+                        table.add_column(col)
+                    for row in data:
+                        table.add_row(*[str(row.get(col, "")) for col in data[0].keys()])
+                    renderables.append(table)
+                    continue
+            except (json.JSONDecodeError, IndexError, TypeError):
+                pass
+            renderables.append(Markdown(part.strip()))
+        else:
+            stripped = part.strip()
+            if stripped:
+                renderables.append(Markdown(stripped))
+    return Group(*renderables) if renderables else Markdown(text)
 
 
 def display_node_update(node_name: str, update: dict) -> None:
@@ -221,7 +249,7 @@ def chat_loop(graph, initial_state: dict, thread_id: str) -> None:
         console.print(f"\n[dim]  (used {iterations_used}/{initial_state['max_iterations']} iterations)[/]")
         if final_content:
             console.print(f"\n[bold cyan]Assistant:[/]")
-            console.print(Markdown(final_content))
+            console.print(render_ai_content(final_content))
         else:
             console.print(f"\n[bold red]Error:[/] The AI model did not return a response. This may be due to an API issue or content filter.")
 
