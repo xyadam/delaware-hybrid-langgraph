@@ -98,6 +98,7 @@ def content_to_text(content) -> str:
 
 EXAMPLE_QUERIES = [
     "What are you capable of doing?",
+    "What was the profit and number of items sold in Beijing, each month in 2024?",
     "What are the main countries where we are selling our products, and how many employees do we have in those countries?",
     "Which of our stores performed the best in 2024?",
     "In Germany what was the most sold product in 2024 and what does it's style card say?",
